@@ -26,7 +26,7 @@
             {{ t('nav.restocking') }}
           </router-link>
           <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
-            Reports
+            {{ t('nav.reports') }}
           </router-link>
         </nav>
         <LanguageSwitcher />
@@ -58,8 +58,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
-import { api } from './api'
+import { ref, computed } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { useI18n } from './composables/useI18n'
 import FilterBar from './components/FilterBar.vue'
@@ -82,74 +81,39 @@ export default {
     const { t } = useI18n()
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
-    const apiTasks = ref([])
+    const localTasks = ref([])
 
-    // Merge mock tasks from currentUser with API tasks
-    const tasks = computed(() => {
-      return [...currentUser.value.tasks, ...apiTasks.value]
-    })
+    const tasks = computed(() => [...currentUser.value.tasks, ...localTasks.value])
 
-    const loadTasks = async () => {
-      try {
-        apiTasks.value = await api.getTasks()
-      } catch (err) {
-        console.error('Failed to load tasks:', err)
-      }
+    const nextTaskId = () => {
+      const all = [...currentUser.value.tasks, ...localTasks.value]
+      return all.reduce((max, t) => Math.max(max, Number(t.id) || 0), 0) + 1
     }
 
-    const addTask = async (taskData) => {
-      try {
-        const newTask = await api.createTask(taskData)
-        // Add new task to the beginning of the array
-        apiTasks.value.unshift(newTask)
-      } catch (err) {
-        console.error('Failed to add task:', err)
-      }
+    const addTask = (taskData) => {
+      localTasks.value.unshift({
+        id: nextTaskId(),
+        status: 'pending',
+        ...taskData,
+      })
     }
 
-    const deleteTask = async (taskId) => {
-      try {
-        // Check if it's a mock task (from currentUser)
-        const isMockTask = currentUser.value.tasks.some(t => t.id === taskId)
-
-        if (isMockTask) {
-          // Remove from mock tasks
-          const index = currentUser.value.tasks.findIndex(t => t.id === taskId)
-          if (index !== -1) {
-            currentUser.value.tasks.splice(index, 1)
-          }
-        } else {
-          // Remove from API tasks
-          await api.deleteTask(taskId)
-          apiTasks.value = apiTasks.value.filter(t => t.id !== taskId)
-        }
-      } catch (err) {
-        console.error('Failed to delete task:', err)
+    const deleteTask = (taskId) => {
+      const mockIdx = currentUser.value.tasks.findIndex(t => t.id === taskId)
+      if (mockIdx !== -1) {
+        currentUser.value.tasks.splice(mockIdx, 1)
+        return
       }
+      localTasks.value = localTasks.value.filter(t => t.id !== taskId)
     }
 
-    const toggleTask = async (taskId) => {
-      try {
-        // Check if it's a mock task (from currentUser)
-        const mockTask = currentUser.value.tasks.find(t => t.id === taskId)
-
-        if (mockTask) {
-          // Toggle mock task status
-          mockTask.status = mockTask.status === 'pending' ? 'completed' : 'pending'
-        } else {
-          // Toggle API task
-          const updatedTask = await api.toggleTask(taskId)
-          const index = apiTasks.value.findIndex(t => t.id === taskId)
-          if (index !== -1) {
-            apiTasks.value[index] = updatedTask
-          }
-        }
-      } catch (err) {
-        console.error('Failed to toggle task:', err)
+    const toggleTask = (taskId) => {
+      const target = currentUser.value.tasks.find(t => t.id === taskId)
+        || localTasks.value.find(t => t.id === taskId)
+      if (target) {
+        target.status = target.status === 'pending' ? 'completed' : 'pending'
       }
     }
-
-    onMounted(loadTasks)
 
     return {
       t,
