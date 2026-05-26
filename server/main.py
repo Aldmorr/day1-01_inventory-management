@@ -14,6 +14,21 @@ QUARTER_MAP = {
     'Q4-2025': ['2025-10', '2025-11', '2025-12']
 }
 
+# Per-category delivery lead times in days for restocking orders
+CATEGORY_LEAD_TIMES = {
+    "Mechanical": 7,
+    "Consumables": 4,
+    "Actuators": 10,
+    "Power Supplies": 6,
+    "Sensors": 5,
+    "Controllers": 8,
+    "Circuit Boards": 9,
+}
+DEFAULT_LEAD_TIME = 7
+
+# In-memory store for submitted restocking orders. Resets on restart.
+submitted_restocking_orders: list = []
+
 def filter_by_month(items: list, month: Optional[str]) -> list:
     """Filter items by month/quarter based on order_date field"""
     if not month or month == 'all':
@@ -89,6 +104,28 @@ class DemandForecast(BaseModel):
     forecasted_demand: int
     trend: str
     period: str
+    category: Optional[str] = None
+    unit_cost: Optional[float] = None
+
+class RestockingOrderItem(BaseModel):
+    item_sku: str
+    item_name: str
+    category: str
+    quantity: int
+    unit_cost: float
+
+class CreateRestockingOrderRequest(BaseModel):
+    items: List[RestockingOrderItem]
+    budget: float
+
+class RestockingOrder(BaseModel):
+    id: str
+    submitted_at: str
+    items: List[RestockingOrderItem]
+    total_value: float
+    lead_time_days: int
+    expected_delivery: str
+    status: str
 
 class BacklogItem(BaseModel):
     id: str
@@ -303,6 +340,48 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.post("/api/restocking/orders", response_model=RestockingOrder)
+def create_restocking_order(payload: CreateRestockingOrderRequest):
+    """Submit a restocking purchase order. Budget is informational; items are trusted as already-budgeted on the client."""
+    from datetime import datetime, timedelta
+
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="At least one item is required")
+
+    total_value = round(sum(item.quantity * item.unit_cost for item in payload.items), 2)
+
+    if total_value > payload.budget + 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order total ${total_value:.2f} exceeds budget ${payload.budget:.2f}"
+        )
+
+    # Lead time = slowest category in the basket
+    lead_time = max(
+        (CATEGORY_LEAD_TIMES.get(item.category, DEFAULT_LEAD_TIME) for item in payload.items),
+        default=DEFAULT_LEAD_TIME,
+    )
+
+    now = datetime.utcnow()
+    order = {
+        "id": f"RO-{len(submitted_restocking_orders) + 1:04d}",
+        "submitted_at": now.replace(microsecond=0).isoformat(),
+        "items": [item.dict() for item in payload.items],
+        "total_value": total_value,
+        "lead_time_days": lead_time,
+        "expected_delivery": (now + timedelta(days=lead_time)).date().isoformat(),
+        "status": "Submitted",
+    }
+    submitted_restocking_orders.append(order)
+    return order
+
+
+@app.get("/api/restocking/orders", response_model=List[RestockingOrder])
+def list_restocking_orders():
+    """List all submitted restocking orders (newest first)."""
+    return list(reversed(submitted_restocking_orders))
+
 
 if __name__ == "__main__":
     import uvicorn

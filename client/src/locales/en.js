@@ -6,6 +6,7 @@ export default {
     orders: 'Orders',
     finance: 'Finance',
     demandForecast: 'Demand Forecast',
+    restocking: 'Restocking',
     companyName: 'Catalyst Components',
     subtitle: 'Inventory Management System'
   },
@@ -106,12 +107,22 @@ export default {
     title: 'Orders',
     description: 'View and manage customer orders',
     allOrders: 'All Orders',
+    submittedOrdersTitle: 'Submitted Restocking Orders',
     totalOrders: 'Total Orders',
     totalRevenue: 'Total Revenue',
     avgOrderValue: 'Avg Order Value',
     onTimeDelivery: 'On-Time Delivery',
     itemsCount: '{count} items',
     quantity: 'Qty',
+    submitted: {
+      id: 'Order ID',
+      submittedAt: 'Submitted',
+      items: 'Items',
+      totalValue: 'Total Value',
+      leadTime: 'Lead Time',
+      expectedDelivery: 'Expected Delivery',
+      days: '{count} days'
+    },
     table: {
       orderNumber: 'Order Number',
       orderId: 'Order ID',
@@ -126,6 +137,33 @@ export default {
       status: 'Status',
       expectedDelivery: 'Expected Delivery',
       actualDelivery: 'Actual Delivery'
+    }
+  },
+
+  // Restocking
+  restocking: {
+    title: 'Restocking',
+    description: 'Recommend items to restock based on demand forecast and budget',
+    budgetTitle: 'Available Budget',
+    budgetHint: 'Slide to set your restocking budget. Recommendations update automatically.',
+    recommendedItems: 'Recommended Items',
+    totalUnits: 'Total Units',
+    estimatedCost: 'Estimated Cost',
+    remainingBudget: 'Remaining Budget',
+    recommendationsTitle: 'Recommendations',
+    placeOrder: 'Place Order',
+    submitting: 'Submitting…',
+    emptyState: 'No items recommended. Increase your budget to see suggestions.',
+    successMessage: 'Order {id} submitted. Expected delivery in {days} days.',
+    table: {
+      sku: 'SKU',
+      itemName: 'Item Name',
+      category: 'Category',
+      trend: 'Trend',
+      demandGap: 'Demand Gap',
+      recommendedQty: 'Recommended Qty',
+      unitCost: 'Unit Cost',
+      lineCost: 'Line Cost'
     }
   },
 
@@ -204,6 +242,7 @@ export default {
     shipped: 'Shipped',
     processing: 'Processing',
     backordered: 'Backordered',
+    submitted: 'Submitted',
     inStock: 'In Stock',
     lowStock: 'Low Stock',
     adequate: 'Adequate'

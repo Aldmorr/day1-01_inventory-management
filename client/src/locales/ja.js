@@ -6,6 +6,7 @@ export default {
     orders: '注文',
     finance: '財務',
     demandForecast: '需要予測',
+    restocking: '補充発注',
     companyName: '触媒コンポーネンツ',
     subtitle: '在庫管理システム'
   },
@@ -106,12 +107,22 @@ export default {
     title: '注文',
     description: '顧客注文の表示と管理',
     allOrders: 'すべての注文',
+    submittedOrdersTitle: '提出済み補充発注',
     totalOrders: '総注文数',
     totalRevenue: '総収益',
     avgOrderValue: '平均注文額',
     onTimeDelivery: '定時配達',
     itemsCount: '{count}件',
     quantity: '数量',
+    submitted: {
+      id: '注文ID',
+      submittedAt: '提出日',
+      items: '品目',
+      totalValue: '合計金額',
+      leadTime: 'リードタイム',
+      expectedDelivery: '予定配達日',
+      days: '{count}日'
+    },
     table: {
       orderNumber: '注文番号',
       orderId: '注文ID',
@@ -126,6 +137,33 @@ export default {
       status: 'ステータス',
       expectedDelivery: '予定配達日',
       actualDelivery: '実際の配達日'
+    }
+  },
+
+  // Restocking
+  restocking: {
+    title: '補充発注',
+    description: '需要予測と予算に基づいて補充する品目を提案',
+    budgetTitle: '利用可能な予算',
+    budgetHint: 'スライダーで補充予算を設定してください。提案は自動的に更新されます。',
+    recommendedItems: '推奨品目',
+    totalUnits: '合計数量',
+    estimatedCost: '見積コスト',
+    remainingBudget: '残り予算',
+    recommendationsTitle: '推奨リスト',
+    placeOrder: '発注する',
+    submitting: '送信中…',
+    emptyState: '推奨される品目はありません。予算を増やしてください。',
+    successMessage: '注文 {id} を提出しました。{days}日後に配達予定。',
+    table: {
+      sku: 'SKU',
+      itemName: '品目名',
+      category: 'カテゴリ',
+      trend: 'トレンド',
+      demandGap: '需要ギャップ',
+      recommendedQty: '推奨数量',
+      unitCost: '単価',
+      lineCost: '小計'
     }
   },
 
@@ -204,6 +242,7 @@ export default {
     shipped: '出荷済み',
     processing: '処理中',
     backordered: 'バックオーダー',
+    submitted: '提出済み',
     inStock: '在庫あり',
     lowStock: '在庫僅少',
     adequate: '適量'
