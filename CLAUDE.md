@@ -40,6 +40,8 @@ cd client
 npm install && npm run dev
 ```
 
+> If `uv` is missing, install it first with `brew install uv`, then run `uv sync` in `server/`.
+
 ## Key Patterns
 
 **Filter System**: 4 filters (Time Period, Warehouse, Category, Order Status) apply to all data via query params
