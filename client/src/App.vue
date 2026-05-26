@@ -29,6 +29,13 @@
             Reports
           </router-link>
         </nav>
+        <button
+          class="theme-toggle"
+          :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          {{ theme === 'dark' ? '☀' : '☾' }}
+        </button>
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
@@ -62,6 +69,7 @@ import { ref, onMounted, computed } from 'vue'
 import { api } from './api'
 import { useAuth } from './composables/useAuth'
 import { useI18n } from './composables/useI18n'
+import { useTheme } from './composables/useTheme'
 import FilterBar from './components/FilterBar.vue'
 import ProfileMenu from './components/ProfileMenu.vue'
 import ProfileDetailsModal from './components/ProfileDetailsModal.vue'
@@ -80,6 +88,7 @@ export default {
   setup() {
     const { currentUser } = useAuth()
     const { t } = useI18n()
+    const { theme, toggle: toggleTheme } = useTheme()
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
     const apiTasks = ref([])
@@ -153,6 +162,8 @@ export default {
 
     return {
       t,
+      theme,
+      toggleTheme,
       showProfileDetails,
       showTasks,
       tasks,
@@ -485,5 +496,112 @@ tbody tr:hover {
   border-radius: 8px;
   margin: 1rem 0;
   font-size: 0.938rem;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  margin-right: 0.75rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.theme-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+/* ===== Dark mode overrides ===== */
+html[data-theme='dark'] body {
+  background: #0b1220;
+  color: #e2e8f0;
+}
+html[data-theme='dark'] .top-nav {
+  background: #0f172a;
+  border-bottom-color: #1e293b;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+}
+html[data-theme='dark'] .logo h1,
+html[data-theme='dark'] .page-header h2,
+html[data-theme='dark'] .card-title,
+html[data-theme='dark'] .stat-value {
+  color: #f1f5f9;
+}
+html[data-theme='dark'] .subtitle,
+html[data-theme='dark'] .page-header p,
+html[data-theme='dark'] .stat-label,
+html[data-theme='dark'] .loading {
+  color: #94a3b8;
+}
+html[data-theme='dark'] .subtitle {
+  border-left-color: #1e293b;
+}
+html[data-theme='dark'] .nav-tabs a {
+  color: #94a3b8;
+}
+html[data-theme='dark'] .nav-tabs a:hover {
+  color: #f1f5f9;
+  background: #1e293b;
+}
+html[data-theme='dark'] .nav-tabs a.active {
+  color: #60a5fa;
+  background: rgba(37, 99, 235, 0.15);
+}
+html[data-theme='dark'] .nav-tabs a.active::after {
+  background: #60a5fa;
+}
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .stat-card {
+  background: #111c2e;
+  border-color: #1e293b;
+}
+html[data-theme='dark'] .stat-card:hover {
+  border-color: #334155;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+html[data-theme='dark'] .card-header {
+  border-bottom-color: #1e293b;
+}
+html[data-theme='dark'] thead {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+html[data-theme='dark'] th {
+  color: #94a3b8;
+}
+html[data-theme='dark'] td {
+  border-top-color: #1e293b;
+  color: #cbd5e1;
+}
+html[data-theme='dark'] tbody tr:hover {
+  background: #0f172a;
+}
+html[data-theme='dark'] .theme-toggle {
+  border-color: #334155;
+  color: #cbd5e1;
+}
+html[data-theme='dark'] .theme-toggle:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+html[data-theme='dark'] input::placeholder {
+  color: #64748b;
 }
 </style>
