@@ -1,7 +1,8 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
 
 app = FastAPI(title="Factory Inventory Management System")
@@ -61,13 +62,18 @@ def apply_filters(items: list, warehouse: Optional[str] = None, category: Option
 
     return filtered
 
-# CORS middleware
+# CORS: pinned to the local Vite dev server. Override via env for other deployments.
+# Credentials disabled — no auth means no cookies/auth headers to protect, and
+# wildcard-with-credentials would let any origin ride along once auth is added.
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173"
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Data models
@@ -108,15 +114,19 @@ class DemandForecast(BaseModel):
     unit_cost: Optional[float] = None
 
 class RestockingOrderItem(BaseModel):
+    # Only SKU + quantity are authoritative from the client.
+    # item_name / category / unit_cost are accepted for backwards compat but
+    # ignored — the server looks them up from the inventory catalog. See
+    # create_restocking_order().
     item_sku: str
-    item_name: str
-    category: str
-    quantity: int
-    unit_cost: float
+    quantity: int = Field(gt=0, le=10000)
+    item_name: Optional[str] = None
+    category: Optional[str] = None
+    unit_cost: Optional[float] = None
 
 class CreateRestockingOrderRequest(BaseModel):
-    items: List[RestockingOrderItem]
-    budget: float
+    items: List[RestockingOrderItem] = Field(min_length=1, max_length=200)
+    budget: float = Field(ge=0)
 
 class RestockingOrder(BaseModel):
     id: str
@@ -265,12 +275,18 @@ def get_recent_transactions():
     return recent_transactions
 
 @app.get("/api/reports/quarterly")
-def get_quarterly_reports():
-    """Get quarterly performance reports"""
-    # Calculate quarterly statistics from orders
+def get_quarterly_reports(
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    month: Optional[str] = None,
+):
+    """Get quarterly performance reports, honoring the global filter bar."""
+    filtered_orders = apply_filters(orders, warehouse, category, status)
+    filtered_orders = filter_by_month(filtered_orders, month)
     quarters = {}
 
-    for order in orders:
+    for order in filtered_orders:
         order_date = order.get('order_date', '')
         # Determine quarter
         if '2025-01' in order_date or '2025-02' in order_date or '2025-03' in order_date:
@@ -311,11 +327,18 @@ def get_quarterly_reports():
     return result
 
 @app.get("/api/reports/monthly-trends")
-def get_monthly_trends():
-    """Get month-over-month trends"""
+def get_monthly_trends(
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    month: Optional[str] = None,
+):
+    """Get month-over-month trends, honoring the global filter bar."""
+    filtered_orders = apply_filters(orders, warehouse, category, status)
+    filtered_orders = filter_by_month(filtered_orders, month)
     months = {}
 
-    for order in orders:
+    for order in filtered_orders:
         order_date = order.get('order_date', '')
         if not order_date:
             continue
@@ -343,13 +366,30 @@ def get_monthly_trends():
 
 @app.post("/api/restocking/orders", response_model=RestockingOrder)
 def create_restocking_order(payload: CreateRestockingOrderRequest):
-    """Submit a restocking purchase order. Budget is informational; items are trusted as already-budgeted on the client."""
+    """Submit a restocking purchase order. SKU, name, category, and unit_cost
+    are resolved server-side from the inventory catalog; only quantities and
+    SKUs are taken from the client."""
     from datetime import datetime, timedelta
 
-    if not payload.items:
-        raise HTTPException(status_code=400, detail="At least one item is required")
+    inventory_by_sku = {item["sku"]: item for item in inventory_items}
 
-    total_value = round(sum(item.quantity * item.unit_cost for item in payload.items), 2)
+    resolved_items = []
+    for item in payload.items:
+        catalog_item = inventory_by_sku.get(item.item_sku)
+        if not catalog_item:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown SKU: {item.item_sku}",
+            )
+        resolved_items.append({
+            "item_sku": item.item_sku,
+            "item_name": catalog_item["name"],
+            "category": catalog_item["category"],
+            "quantity": item.quantity,
+            "unit_cost": catalog_item["unit_cost"],
+        })
+
+    total_value = round(sum(i["quantity"] * i["unit_cost"] for i in resolved_items), 2)
 
     if total_value > payload.budget + 0.01:
         raise HTTPException(
@@ -357,9 +397,8 @@ def create_restocking_order(payload: CreateRestockingOrderRequest):
             detail=f"Order total ${total_value:.2f} exceeds budget ${payload.budget:.2f}"
         )
 
-    # Lead time = slowest category in the basket
     lead_time = max(
-        (CATEGORY_LEAD_TIMES.get(item.category, DEFAULT_LEAD_TIME) for item in payload.items),
+        (CATEGORY_LEAD_TIMES.get(i["category"], DEFAULT_LEAD_TIME) for i in resolved_items),
         default=DEFAULT_LEAD_TIME,
     )
 
@@ -367,7 +406,7 @@ def create_restocking_order(payload: CreateRestockingOrderRequest):
     order = {
         "id": f"RO-{len(submitted_restocking_orders) + 1:04d}",
         "submitted_at": now.replace(microsecond=0).isoformat(),
-        "items": [item.dict() for item in payload.items],
+        "items": resolved_items,
         "total_value": total_value,
         "lead_time_days": lead_time,
         "expected_delivery": (now + timedelta(days=lead_time)).date().isoformat(),
@@ -385,4 +424,8 @@ def list_restocking_orders():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Loopback by default; set HOST=0.0.0.0 to expose on the network (do not do
+    # this without first adding auth — see server/CLAUDE.md "Security Notes").
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8001"))
+    uvicorn.run(app, host=host, port=port)

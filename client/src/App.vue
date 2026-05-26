@@ -26,9 +26,16 @@
             {{ t('nav.restocking') }}
           </router-link>
           <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
-            Reports
+            {{ t('nav.reports') }}
           </router-link>
         </nav>
+        <button
+          class="theme-toggle"
+          :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          {{ theme === 'dark' ? '☀' : '☾' }}
+        </button>
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
@@ -58,10 +65,10 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
-import { api } from './api'
+import { ref, computed } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { useI18n } from './composables/useI18n'
+import { useTheme } from './composables/useTheme'
 import FilterBar from './components/FilterBar.vue'
 import ProfileMenu from './components/ProfileMenu.vue'
 import ProfileDetailsModal from './components/ProfileDetailsModal.vue'
@@ -80,79 +87,47 @@ export default {
   setup() {
     const { currentUser } = useAuth()
     const { t } = useI18n()
+    const { theme, toggle: toggleTheme } = useTheme()
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
-    const apiTasks = ref([])
+    const localTasks = ref([])
 
-    // Merge mock tasks from currentUser with API tasks
-    const tasks = computed(() => {
-      return [...currentUser.value.tasks, ...apiTasks.value]
-    })
+    const tasks = computed(() => [...currentUser.value.tasks, ...localTasks.value])
 
-    const loadTasks = async () => {
-      try {
-        apiTasks.value = await api.getTasks()
-      } catch (err) {
-        console.error('Failed to load tasks:', err)
-      }
+    const nextTaskId = () => {
+      const all = [...currentUser.value.tasks, ...localTasks.value]
+      return all.reduce((max, t) => Math.max(max, Number(t.id) || 0), 0) + 1
     }
 
-    const addTask = async (taskData) => {
-      try {
-        const newTask = await api.createTask(taskData)
-        // Add new task to the beginning of the array
-        apiTasks.value.unshift(newTask)
-      } catch (err) {
-        console.error('Failed to add task:', err)
-      }
+    const addTask = (taskData) => {
+      localTasks.value.unshift({
+        id: nextTaskId(),
+        status: 'pending',
+        ...taskData,
+      })
     }
 
-    const deleteTask = async (taskId) => {
-      try {
-        // Check if it's a mock task (from currentUser)
-        const isMockTask = currentUser.value.tasks.some(t => t.id === taskId)
-
-        if (isMockTask) {
-          // Remove from mock tasks
-          const index = currentUser.value.tasks.findIndex(t => t.id === taskId)
-          if (index !== -1) {
-            currentUser.value.tasks.splice(index, 1)
-          }
-        } else {
-          // Remove from API tasks
-          await api.deleteTask(taskId)
-          apiTasks.value = apiTasks.value.filter(t => t.id !== taskId)
-        }
-      } catch (err) {
-        console.error('Failed to delete task:', err)
+    const deleteTask = (taskId) => {
+      const mockIdx = currentUser.value.tasks.findIndex(t => t.id === taskId)
+      if (mockIdx !== -1) {
+        currentUser.value.tasks.splice(mockIdx, 1)
+        return
       }
+      localTasks.value = localTasks.value.filter(t => t.id !== taskId)
     }
 
-    const toggleTask = async (taskId) => {
-      try {
-        // Check if it's a mock task (from currentUser)
-        const mockTask = currentUser.value.tasks.find(t => t.id === taskId)
-
-        if (mockTask) {
-          // Toggle mock task status
-          mockTask.status = mockTask.status === 'pending' ? 'completed' : 'pending'
-        } else {
-          // Toggle API task
-          const updatedTask = await api.toggleTask(taskId)
-          const index = apiTasks.value.findIndex(t => t.id === taskId)
-          if (index !== -1) {
-            apiTasks.value[index] = updatedTask
-          }
-        }
-      } catch (err) {
-        console.error('Failed to toggle task:', err)
+    const toggleTask = (taskId) => {
+      const target = currentUser.value.tasks.find(t => t.id === taskId)
+        || localTasks.value.find(t => t.id === taskId)
+      if (target) {
+        target.status = target.status === 'pending' ? 'completed' : 'pending'
       }
     }
-
-    onMounted(loadTasks)
 
     return {
       t,
+      theme,
+      toggleTheme,
       showProfileDetails,
       showTasks,
       tasks,
@@ -485,5 +460,168 @@ tbody tr:hover {
   border-radius: 8px;
   margin: 1rem 0;
   font-size: 0.938rem;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  margin-right: 0.75rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.theme-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+/* ===== Dark mode overrides =====
+   Uses !important to win over scoped styles in components that hardcode
+   light hex colors (kpi-card, filter-bar, etc.). A real implementation
+   would refactor scoped styles to CSS custom properties. */
+
+/* Surfaces */
+html[data-theme='dark'] body {
+  background: #0b1220 !important;
+  color: #e2e8f0 !important;
+}
+html[data-theme='dark'] .top-nav,
+html[data-theme='dark'] .filters-bar {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4) !important;
+}
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .stat-card,
+html[data-theme='dark'] .kpi-card,
+html[data-theme='dark'] .modal-content,
+html[data-theme='dark'] .dropdown-menu,
+html[data-theme='dark'] .summary-card {
+  background: #111c2e !important;
+  border-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html[data-theme='dark'] .stat-card:hover,
+html[data-theme='dark'] .kpi-card:hover {
+  border-color: #334155 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme='dark'] .card-header,
+html[data-theme='dark'] .kpi-progress-bar {
+  border-bottom-color: #1e293b !important;
+  background: #1e293b !important;
+}
+html[data-theme='dark'] thead {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+html[data-theme='dark'] tbody tr:hover {
+  background: #0f172a !important;
+}
+
+/* Borders for striped rows */
+html[data-theme='dark'] td,
+html[data-theme='dark'] tr {
+  border-top-color: #1e293b !important;
+}
+
+/* Typography — headings */
+html[data-theme='dark'] .logo h1,
+html[data-theme='dark'] .page-header h2,
+html[data-theme='dark'] .card-title,
+html[data-theme='dark'] .stat-value,
+html[data-theme='dark'] .kpi-value,
+html[data-theme='dark'] .donut-center-value,
+html[data-theme='dark'] h1,
+html[data-theme='dark'] h2,
+html[data-theme='dark'] h3 {
+  color: #f1f5f9 !important;
+}
+
+/* Typography — muted/secondary */
+html[data-theme='dark'] .subtitle,
+html[data-theme='dark'] .page-header p,
+html[data-theme='dark'] .header-meta,
+html[data-theme='dark'] .stat-label,
+html[data-theme='dark'] .kpi-label,
+html[data-theme='dark'] .kpi-goal,
+html[data-theme='dark'] .section-title,
+html[data-theme='dark'] .legend-item,
+html[data-theme='dark'] .hint,
+html[data-theme='dark'] .loading,
+html[data-theme='dark'] th,
+html[data-theme='dark'] .filter-group label,
+html[data-theme='dark'] .filter-group > span {
+  color: #94a3b8 !important;
+}
+
+/* Body text inside tables/cards */
+html[data-theme='dark'] td,
+html[data-theme='dark'] .legend-item-compact {
+  color: #cbd5e1 !important;
+}
+html[data-theme='dark'] .subtitle {
+  border-left-color: #1e293b !important;
+}
+
+/* Nav tabs */
+html[data-theme='dark'] .nav-tabs a {
+  color: #94a3b8;
+}
+html[data-theme='dark'] .nav-tabs a:hover {
+  color: #f1f5f9;
+  background: #1e293b;
+}
+html[data-theme='dark'] .nav-tabs a.active {
+  color: #60a5fa;
+  background: rgba(37, 99, 235, 0.15);
+}
+html[data-theme='dark'] .nav-tabs a.active::after {
+  background: #60a5fa;
+}
+
+/* Theme toggle button */
+html[data-theme='dark'] .theme-toggle {
+  border-color: #334155;
+  color: #cbd5e1;
+}
+html[data-theme='dark'] .theme-toggle:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+
+/* Form controls */
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] .filter-select,
+html[data-theme='dark'] .reset-filters-btn {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+html[data-theme='dark'] .filter-select:hover,
+html[data-theme='dark'] .reset-filters-btn:hover:not(:disabled) {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+html[data-theme='dark'] input::placeholder {
+  color: #64748b !important;
+}
+
+/* Buttons (excluding primary action buttons that carry brand color) */
+html[data-theme='dark'] button:not(.place-order-btn):not(.theme-toggle):not(.btn-primary) {
+  color: inherit;
 }
 </style>
