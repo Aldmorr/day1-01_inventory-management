@@ -520,31 +520,96 @@ tbody tr:hover {
   border-color: #cbd5e1;
 }
 
-/* ===== Dark mode overrides ===== */
+/* ===== Dark mode overrides =====
+   Uses !important to win over scoped styles in components that hardcode
+   light hex colors (kpi-card, filter-bar, etc.). A real implementation
+   would refactor scoped styles to CSS custom properties. */
+
+/* Surfaces */
 html[data-theme='dark'] body {
-  background: #0b1220;
-  color: #e2e8f0;
+  background: #0b1220 !important;
+  color: #e2e8f0 !important;
 }
-html[data-theme='dark'] .top-nav {
-  background: #0f172a;
-  border-bottom-color: #1e293b;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+html[data-theme='dark'] .top-nav,
+html[data-theme='dark'] .filters-bar {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4) !important;
 }
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .stat-card,
+html[data-theme='dark'] .kpi-card,
+html[data-theme='dark'] .modal-content,
+html[data-theme='dark'] .dropdown-menu,
+html[data-theme='dark'] .summary-card {
+  background: #111c2e !important;
+  border-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html[data-theme='dark'] .stat-card:hover,
+html[data-theme='dark'] .kpi-card:hover {
+  border-color: #334155 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme='dark'] .card-header,
+html[data-theme='dark'] .kpi-progress-bar {
+  border-bottom-color: #1e293b !important;
+  background: #1e293b !important;
+}
+html[data-theme='dark'] thead {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+html[data-theme='dark'] tbody tr:hover {
+  background: #0f172a !important;
+}
+
+/* Borders for striped rows */
+html[data-theme='dark'] td,
+html[data-theme='dark'] tr {
+  border-top-color: #1e293b !important;
+}
+
+/* Typography — headings */
 html[data-theme='dark'] .logo h1,
 html[data-theme='dark'] .page-header h2,
 html[data-theme='dark'] .card-title,
-html[data-theme='dark'] .stat-value {
-  color: #f1f5f9;
+html[data-theme='dark'] .stat-value,
+html[data-theme='dark'] .kpi-value,
+html[data-theme='dark'] .donut-center-value,
+html[data-theme='dark'] h1,
+html[data-theme='dark'] h2,
+html[data-theme='dark'] h3 {
+  color: #f1f5f9 !important;
 }
+
+/* Typography — muted/secondary */
 html[data-theme='dark'] .subtitle,
 html[data-theme='dark'] .page-header p,
+html[data-theme='dark'] .header-meta,
 html[data-theme='dark'] .stat-label,
-html[data-theme='dark'] .loading {
-  color: #94a3b8;
+html[data-theme='dark'] .kpi-label,
+html[data-theme='dark'] .kpi-goal,
+html[data-theme='dark'] .section-title,
+html[data-theme='dark'] .legend-item,
+html[data-theme='dark'] .hint,
+html[data-theme='dark'] .loading,
+html[data-theme='dark'] th,
+html[data-theme='dark'] .filter-group label,
+html[data-theme='dark'] .filter-group > span {
+  color: #94a3b8 !important;
+}
+
+/* Body text inside tables/cards */
+html[data-theme='dark'] td,
+html[data-theme='dark'] .legend-item-compact {
+  color: #cbd5e1 !important;
 }
 html[data-theme='dark'] .subtitle {
-  border-left-color: #1e293b;
+  border-left-color: #1e293b !important;
 }
+
+/* Nav tabs */
 html[data-theme='dark'] .nav-tabs a {
   color: #94a3b8;
 }
@@ -559,32 +624,8 @@ html[data-theme='dark'] .nav-tabs a.active {
 html[data-theme='dark'] .nav-tabs a.active::after {
   background: #60a5fa;
 }
-html[data-theme='dark'] .card,
-html[data-theme='dark'] .stat-card {
-  background: #111c2e;
-  border-color: #1e293b;
-}
-html[data-theme='dark'] .stat-card:hover {
-  border-color: #334155;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-}
-html[data-theme='dark'] .card-header {
-  border-bottom-color: #1e293b;
-}
-html[data-theme='dark'] thead {
-  background: #0f172a;
-  border-color: #1e293b;
-}
-html[data-theme='dark'] th {
-  color: #94a3b8;
-}
-html[data-theme='dark'] td {
-  border-top-color: #1e293b;
-  color: #cbd5e1;
-}
-html[data-theme='dark'] tbody tr:hover {
-  background: #0f172a;
-}
+
+/* Theme toggle button */
 html[data-theme='dark'] .theme-toggle {
   border-color: #334155;
   color: #cbd5e1;
@@ -594,14 +635,29 @@ html[data-theme='dark'] .theme-toggle:hover {
   color: #f1f5f9;
   border-color: #475569;
 }
+
+/* Form controls */
 html[data-theme='dark'] input,
 html[data-theme='dark'] select,
-html[data-theme='dark'] textarea {
-  background: #0f172a;
-  color: #e2e8f0;
-  border-color: #334155;
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] .filter-select,
+html[data-theme='dark'] .reset-filters-btn {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+html[data-theme='dark'] .filter-select:hover,
+html[data-theme='dark'] .reset-filters-btn:hover:not(:disabled) {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
 }
 html[data-theme='dark'] input::placeholder {
-  color: #64748b;
+  color: #64748b !important;
+}
+
+/* Buttons (excluding primary action buttons that carry brand color) */
+html[data-theme='dark'] button:not(.place-order-btn):not(.theme-toggle):not(.btn-primary) {
+  color: inherit;
 }
 </style>
